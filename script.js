@@ -50,24 +50,50 @@ const tabButtons = document.querySelectorAll('.tab-btn');
 
 tabButtons.forEach(button => {
     button.addEventListener('click', () => {
+        // Remove active class from all buttons and ALL tab-panes
         tabButtons.forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.gallery-grid').forEach(grid => grid.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
 
+        // Make the clicked button and its target pane active
         button.classList.add('active');
-
         currentCategory = button.getAttribute('data-target');
         document.getElementById(currentCategory).classList.add('active');
 
-        currentIndex = 0;
-        document.getElementById(currentCategory).innerHTML = ''; 
-        
-        observer.observe(loader);
-        loadImages();
+        // SPECIAL LOGIC: If it is the movie, do NOT clear it and do NOT load images
+        if (currentCategory === 'themovie') {
+            loader.style.display = 'none'; // Hide the "Loading more memories..." text
+            observer.disconnect(); // Stop looking for the end of the page
+        } else {
+            // Standard photo loading logic
+            currentIndex = 0;
+            document.getElementById(currentCategory).innerHTML = ''; 
+            observer.observe(loader);
+            loadImages();
+        }
     });
 });
 
 // --- 5. DATA FETCHING & INITIALIZATION ---
-// This is the new part: Fetch the JSON file before doing anything else
+
+// New function to handle the iframe injection
+function loadMovie(videoId) {
+    const movieContainer = document.getElementById('themovie');
+    
+    // Check if the div exists and we have an ID
+    if (movieContainer && videoId) {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://drive.google.com/file/d/${videoId}/preview`;
+        iframe.width = "100%";
+        iframe.height = "480";
+        iframe.allow = "autoplay";
+        iframe.frameBorder = "0"; // Note: camelCase in JS for frameBorder
+        iframe.allowFullscreen = true;
+        
+        movieContainer.innerHTML = ''; // Clear anything currently in there
+        movieContainer.appendChild(iframe);
+    }
+}
+
 async function initializeGallery() {
     try {
         const response = await fetch('data.json');
@@ -77,6 +103,11 @@ async function initializeGallery() {
         }
         
         imageDatabase = await response.json();
+        
+        // --- NEW: Inject the video if the ID exists in your JSON ---
+        if (imageDatabase.highlightMovie) {
+            loadMovie(imageDatabase.highlightMovie);
+        }
         
         // Now that data is loaded, start the gallery
         observer.observe(loader);
